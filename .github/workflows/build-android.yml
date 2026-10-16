@@ -42,18 +42,22 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # 装 Android SDK 管理器 + NDK 27.0.12077973 + CMake 4.1.2（自动接受 license）
-      - name: Set up Android SDK (NDK 27 + CMake 4.1.2)
-        uses: android-actions/setup-android@v3
-        with:
-          ndk: 27.0.12077973
-          cmake: 4.1.2
-
+      # GitHub ubuntu 镜像自带 SDK + cmdline-tools（/usr/local/lib/android/sdk）。
+      # 注意：android-actions/setup-android@v3 已失效（会去装被移除的旧版 'tools' 包），
+      # 所以这里直接用镜像里的 sdkmanager 装所需组件。
       # compileSdk 是 API 36.1（minorApiLevel=1），36.1 小版本平台由 AGP 构建时自动下载
-      - name: Install SDK packages
+      - name: Install NDK 27 + CMake 4.1.2 + SDK packages
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          export ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}
+          SDKMGR=$(ls "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | head -1)
+          yes | "$SDKMGR" --licenses > /dev/null
+          yes | "$SDKMGR" \
+            "ndk;27.0.12077973" \
+            "cmake;4.1.2" \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0"
+          df -h /
 
       # 构建。网络依赖：
       #   - Google Maven / Maven Central（Gradle 依赖）
